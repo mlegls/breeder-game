@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import "98.css";
-import "./App.css";
 
 import { Breed } from "./game/Breed";
 import { Select } from "./game/Select";
@@ -53,12 +52,12 @@ export function App() {
   }
 
   return (
-    <div className="App window h-screen w-screen">
+    <div className="window w-screen h-screen">
       <div className="title-bar">
         <div className="title-bar-text">Breeder Game</div>
       </div>
       {/*end title-bar*/}
-      <div className="content">{mainContent(phase)}</div>
+      <div className="content flex flex-col">{mainContent(phase)}</div>
       {/*end content*/}
     </div>
   );

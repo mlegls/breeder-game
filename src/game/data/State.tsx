@@ -28,10 +28,10 @@ export class Creature {
     this.id = uuidv4();
   }
 
-  public static randomCreature(): Creature {
+  public static randomCreature(sex: boolean | undefined = undefined): Creature {
     return new Creature(
-      Math.random() > 0.5, // gender
-      Math.floor(Math.random() * 5), // fertility
+      (sex === undefined) ? (Math.random() > 0.5) : sex, // sex
+      Math.floor(Math.random() * 4 * (sex ? 3 : 1)), // fertility
 
       Math.random() * 500, // hp_max
       Math.random() * 50, // def
