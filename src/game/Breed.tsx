@@ -4,12 +4,15 @@
 
 import { useState, useRef, useEffect, useReducer } from "react";
 import cytoscape, { ElementsDefinition } from "cytoscape";
+import popper from "cytoscape-popper";
+
+import "./popper.css";
 
 import { Creature } from "./data/State";
 import { AppProps } from "../App";
 
 import { v4 as uuidv4 } from "uuid";
-const columnify = require('columnify');
+const columnify = require("columnify");
 
 class BreedingCreature {
   fertility_left: number;
@@ -18,6 +21,11 @@ class BreedingCreature {
   constructor(creature: Creature) {
     this.creature = creature;
     this.fertility_left = creature.fertility;
+  }
+
+  private static vary(n: number, amount: number): number {
+    // vary by n * 1 +- amount, e.g. 0.1 => 0.9 * n to 1.1 * n
+    return n * (Math.random() * amount * 2) + 1 - amount;
   }
 
   public static canBreed(a: BreedingCreature, b: BreedingCreature): boolean {
@@ -44,10 +52,21 @@ class BreedingCreature {
         child[trait] = Math.random() > 0.5;
         continue;
       }
-      // assign all other traits
       const weight = Math.random();
-      child[trait] =
+      // assign fertility
+      if (trait === "fertility") {
+        const [father, mother] = a.creature.sex ? [a, b] : [b, a];
+        const balanced =
+          (weight / 3) * father.creature[trait] +
+          (1 - weight) * mother.creature[trait];
+        let result = child.sex ? balanced * 3 : balanced;
+        child[trait] = this.vary(result, 0.1);
+      }
+      // assign all other traits
+      let result =
         weight * a.creature[trait] + (1 - weight) * b.creature[trait];
+
+      child[trait] = this.vary(result, 0.1);
     }
     a.fertility_left--;
     b.fertility_left--;
@@ -118,9 +137,9 @@ class BreedingState {
 }
 
 // Components
-function Children(props: {children: Creature[]}) {
-  function display(child: Creature): String {
-    return `${columnify(child)}\n\n`;
+function Children(props: { children: Creature[] }) {
+  function display(c: Creature): String {
+    return `${columnify(c)}\n\n`;
   }
 
   return (
@@ -131,14 +150,14 @@ function Children(props: {children: Creature[]}) {
         </p>
       ))}
     </div>
-  )
+  );
 }
 
 export function Breed(props: AppProps) {
   const [state] = useState<BreedingState>(
     new BreedingState(props.gameState.playerPop)
   );
-  const [_, forceUpdate] = useReducer(x => x + 1, 0);
+  const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
   const cy = useRef<cytoscape.Core>();
   const cytoEl = useRef(null);
@@ -155,6 +174,7 @@ export function Breed(props: AppProps) {
         data: {
           id: breeding.creature.id,
           breeding: breeding,
+          tooltipOn: false,
         },
       });
     }
@@ -184,6 +204,9 @@ export function Breed(props: AppProps) {
   }
 
   useEffect(() => {
+    // for node tooltips
+    cytoscape.use(popper);
+
     // set cy object
     cy.current = cytoscape({
       container: cytoEl.current,
@@ -201,14 +224,68 @@ export function Breed(props: AppProps) {
     cy.current.on("select", "node", (evt) => {
       const node = evt.target;
       state.select(node.data("breeding"));
-      console.log(state.selected);
       updateUI();
+    });
+
+    cy.current.elements().unbind("mouseover");
+    cy.current.on("mouseover", "node", (evt) => {
+      const node = evt.target;
+      node.popperRefObj2 = node.popper({
+        content: () => {
+          let content = document.createElement("div");
+          content.classList.add("popper-div");
+          content.innerHTML = `${JSON.stringify(
+            node.data("breeding").creature,
+            null,
+            "\t"
+          )}`;
+
+          document.body.appendChild(content);
+          return content;
+        },
+      });
+    });
+
+    cy.current.elements().unbind("mouseout");
+    cy.current.on("mouseout", "node", (evt) => {
+      const node = evt.target;
+      if (node.popper) {
+        node.popperRefObj2.state.elements.popper.remove();
+        node.popperRefObj2.destroy();
+      }
     });
 
     cy.current.on("tap", (evt) => {
       if (evt.target !== cy.current) return;
+      if (!cy.current) return;
       state.deselect();
       updateUI();
+    });
+
+    cy.current.on("tap", "node", (evt) => {
+      const node = evt.target;
+      // tooltip
+      if (node.data("tooltipOn")) {
+        node.popperRefObj.state.elements.popper.remove();
+        node.popperRefObj.destroy();
+        node.data("tooltipOn", false);
+      } else {
+        node.popperRefObj = node.popper({
+          content: () => {
+            let content = document.createElement("div");
+            content.classList.add("popper-div-2");
+            content.innerHTML = `${JSON.stringify(
+              node.data("breeding").creature,
+              null,
+              "\t"
+            )}`;
+
+            document.body.appendChild(content);
+            return content;
+          },
+        });
+        node.data("tooltipOn", true);
+      }
     });
 
     /*cy.current.on("mouseover", "node", (evt) => {
