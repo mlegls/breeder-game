@@ -235,7 +235,7 @@ export function Breed(props: AppProps) {
           let content = document.createElement("div");
           content.classList.add("popper-div");
           content.innerHTML = `${JSON.stringify(
-            node.data("breeding").creature,
+            node.data("breeding"),
             null,
             "\t"
           )}`;
@@ -258,6 +258,13 @@ export function Breed(props: AppProps) {
     cy.current.on("tap", (evt) => {
       if (evt.target !== cy.current) return;
       if (!cy.current) return;
+      cy.current.nodes().forEach((node: any) => {
+        if (node.data("tooltipOn")) {
+          node.popperRefObj.state.elements.popper.remove();
+          node.popperRefObj.destroy();
+          node.data("tooltipOn", false);
+        }
+      });
       state.deselect();
       updateUI();
     });
@@ -273,9 +280,9 @@ export function Breed(props: AppProps) {
         node.popperRefObj = node.popper({
           content: () => {
             let content = document.createElement("div");
-            content.classList.add("popper-div-2");
+            content.classList.add("popper-div");
             content.innerHTML = `${JSON.stringify(
-              node.data("breeding").creature,
+              node.data("breeding"),
               null,
               "\t"
             )}`;
