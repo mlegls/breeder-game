@@ -275,6 +275,8 @@ export function Breed(props: AppProps) {
       if (node.data("tooltipOn")) {
         node.popperRefObj.state.elements.popper.remove();
         node.popperRefObj.destroy();
+        node.popperRefObj2.state.elements.popper.remove();
+        node.popperRefObj2.destroy();
         node.data("tooltipOn", false);
       } else {
         node.popperRefObj = node.popper({
